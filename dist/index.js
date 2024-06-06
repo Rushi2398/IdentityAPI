@@ -5,10 +5,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const dotenv_1 = require("dotenv");
+const contact_1 = require("./controllers/contact");
 const app = (0, express_1.default)();
 (0, dotenv_1.config)();
 const PORT = process.env.PORT || 8000;
 app.use(express_1.default.json());
+app.use('/api', contact_1.handleIdentityReconciliation);
 app.listen(PORT, () => {
     console.log(`Server Started at ${PORT}`);
 });
