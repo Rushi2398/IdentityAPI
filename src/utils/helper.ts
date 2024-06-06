@@ -24,7 +24,6 @@ export const getAllContacts = async (email: string | undefined, phoneNumber: str
             ]
         }
     });
-
     // return empty array if no entry found in the database.
     if (!initialContacts) return [];
 
@@ -118,18 +117,20 @@ export const updateSecondaryContact = async (email: string | undefined, phoneNum
 }
 
 // return the result back to caller
-export const returnResult = (result: Contact[]) => (req: Request, res: Response) => {
-    const primaryId = result.filter(contact => contact.linkedId === null);
-    const emailIds = new Set([result.map(contact => contact.email)]);
-    const phones = new Set([result.map(contact => contact.phoneNumber)]);
-    const secondaryIds = new Set([result.map(contact => contact.linkedId).filter(Boolean)]);
+export const returnResult = (result: Contact[]) => {
+    return (req: Request, res: Response) => {
+        const primaryId = result.filter(contact => contact.linkedId === null);
+        const emailIds = new Set([result.map(contact => contact.email)]);
+        const phones = new Set([result.map(contact => contact.phoneNumber)]);
+        const secondaryIds = new Set([result.map(contact => contact.linkedId).filter(Boolean)]);
 
-    return res.status(200).json({
-        contact: {
-            primaryContactId: primaryId[0].id,
-            emails: Array.from(emailIds),
-            phoneNumbers: Array.from(phones),
-            secondaryContactIds: Array.from(secondaryIds)
-        }
-    });
+        return res.status(200).json({
+            contact: {
+                primaryContactId: primaryId[0].id,
+                emails: Array.from(emailIds),
+                phoneNumbers: Array.from(phones),
+                secondaryContactIds: Array.from(secondaryIds)
+            }
+        });
+    }
 }

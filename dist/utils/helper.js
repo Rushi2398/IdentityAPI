@@ -109,18 +109,20 @@ const updateSecondaryContact = (email, phoneNumber, allContacts) => __awaiter(vo
 });
 exports.updateSecondaryContact = updateSecondaryContact;
 // return the result back to caller
-const returnResult = (result) => (req, res) => {
-    const primaryId = result.filter(contact => contact.linkedId === null);
-    const emailIds = new Set([result.map(contact => contact.email)]);
-    const phones = new Set([result.map(contact => contact.phoneNumber)]);
-    const secondaryIds = new Set([result.map(contact => contact.linkedId).filter(Boolean)]);
-    return res.status(200).json({
-        contact: {
-            primaryContactId: primaryId[0].id,
-            emails: Array.from(emailIds),
-            phoneNumbers: Array.from(phones),
-            secondaryContactIds: Array.from(secondaryIds)
-        }
-    });
+const returnResult = (result) => {
+    return (req, res) => {
+        const primaryId = result.filter(contact => contact.linkedId === null);
+        const emailIds = new Set([result.map(contact => contact.email)]);
+        const phones = new Set([result.map(contact => contact.phoneNumber)]);
+        const secondaryIds = new Set([result.map(contact => contact.linkedId).filter(Boolean)]);
+        return res.status(200).json({
+            contact: {
+                primaryContactId: primaryId[0].id,
+                emails: Array.from(emailIds),
+                phoneNumbers: Array.from(phones),
+                secondaryContactIds: Array.from(secondaryIds)
+            }
+        });
+    };
 };
 exports.returnResult = returnResult;

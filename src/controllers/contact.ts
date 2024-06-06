@@ -36,18 +36,46 @@ export const handleIdentityReconciliation = async (req: Request, res: Response) 
 
         // Case 1: Where there is only one primary Contact for the given email and phoneNumber
         if (primaryContacts.length === 1) {
-            const secondaryContact = await createSecondaryContact(email, phoneNumber, primaryContacts[0]);
-            result.push(secondaryContact);
+            const contactExist = result.some(contact => contact.email === email && contact.phoneNumber === phoneNumber);
 
-            returnResult(result);
+            if (!contactExist) {
+                const secondaryContact = await createSecondaryContact(email, phoneNumber, primaryContacts[0]);
+                result.push(secondaryContact);
+            }
+            const emailIds = new Set(result.map(contact => contact.email));
+            const phones = new Set(result.map(contact => contact.phoneNumber));
+            const secondaryIds = new Set(result.map(contact => contact.id !== primaryContacts[0].id).filter(Boolean));
+
+            return res.status(200).json({
+                contact: {
+                    primaryContactId: primaryContacts[0].id,
+                    emails: Array.from(emailIds),
+                    phoneNumbers: Array.from(phones),
+                    secondaryContactIds: Array.from(secondaryIds)
+                }
+            });
         }
 
         // Case 2: Where there are 2 primary Contacts for the given email and phoneNumber.
         if (primaryContacts.length === 2) {
-            await updateSecondaryContact(email, phoneNumber, result);
-            result = await getAllContacts(email, phoneNumber);
+            const contactExist = result.some(contact => contact.email === email && contact.phoneNumber === phoneNumber);
+            if (!contactExist) {
+                await updateSecondaryContact(email, phoneNumber, result);
+                result = await getAllContacts(email, phoneNumber);
+            }
+            const primaryId = result.filter(contact => contact.linkedId === null);
+            const emailIds = new Set(result.map(contact => contact.email));
+            const phones = new Set(result.map(contact => contact.phoneNumber));
+            const secondaryIds = new Set(result.map(contact => contact.id !== primaryId[0].id).filter(Boolean));
 
-            returnResult(result);
+            return res.status(200).json({
+                contact: {
+                    primaryContactId: primaryId[0].id,
+                    emails: Array.from(emailIds),
+                    phoneNumbers: Array.from(phones),
+                    secondaryContactIds: Array.from(secondaryIds)
+                }
+            });
         }
     } catch (e) {
         // Zod Error
