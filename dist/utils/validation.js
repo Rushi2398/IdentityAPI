@@ -5,14 +5,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.validationSchema = void 0;
 const zod_1 = __importDefault(require("zod"));
-const emailSchema = zod_1.default.string().email({ message: "Invalid Email Address" });
+const emailSchema = zod_1.default.string().email({ message: "Invalid Email Address" }).nullable();
 const phoneNumberSchema = zod_1.default.string()
     .length(10, { message: "PhoneNumber must be 10 characters long" })
-    .regex(/^\d{10}$/, { message: "Phone number must contain only digits" });
+    .regex(/^\d{10}$/, { message: "Phone number must contain only digits" }).nullable();
 // Validation Schema for Email, PhoneNumber using Zod library.
 exports.validationSchema = zod_1.default.object({
-    email: emailSchema.optional(),
-    phoneNumber: phoneNumberSchema.optional(),
+    email: emailSchema.nullable(),
+    phoneNumber: phoneNumberSchema.nullable(),
 }).refine(data => data.phoneNumber || data.email, {
     message: "Either phone number or email must be provided",
     path: ["phoneNumber", "email"]

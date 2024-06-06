@@ -15,7 +15,7 @@ type Contact = {
 };
 
 // get All Primary and Secondary Contacts for given email and phoneNumber
-export const getAllContacts = async (email: string | undefined, phoneNumber: string | undefined) => {
+export const getAllContacts = async (email: string | null | undefined, phoneNumber: string | null | undefined) => {
     const initialContacts = await prisma.contact.findMany({
         where: {
             OR: [
@@ -53,13 +53,20 @@ export const getAllContacts = async (email: string | undefined, phoneNumber: str
                     where: { id: contact.linkedId }
                 });
             }
+            const otherContacts = await prisma.contact.findMany({
+                where: {
+                    linkedId: contact?.id
+                }
+            })
+            allContacts.push(...otherContacts);
         }
     }
+
     return allContacts;
 }
 
 // Create a new contact when there is no existing combination present with email and phone Number
-export const createPrimaryContact = async (email: string, phoneNumber: string) => {
+export const createPrimaryContact = async (email: string | null | undefined, phoneNumber: string | null | undefined) => {
     const newContact = await prisma.contact.create({
         data: {
             email,
@@ -72,7 +79,7 @@ export const createPrimaryContact = async (email: string, phoneNumber: string) =
 }
 
 // Create a secondary contact since the email or phoneNumber is already present with a primary contact
-export const createSecondaryContact = async (email: string | undefined, phoneNumber: string | undefined, primaryContact: Contact) => {
+export const createSecondaryContact = async (email: string | null | undefined, phoneNumber: string | null | undefined, primaryContact: Contact) => {
     const newSecondaryContact = await prisma.contact.create({
         data: {
             email: email ?? primaryContact.email,
@@ -90,7 +97,7 @@ export const createSecondaryContact = async (email: string | undefined, phoneNum
 }
 
 // Update all the contacts whose primary Id is converted to Secondary Id
-export const updateSecondaryContact = async (email: string | undefined, phoneNumber: string | undefined, allContacts: Contact[]) => {
+export const updateSecondaryContact = async (email: string | null | undefined, phoneNumber: string | null | undefined, allContacts: Contact[]) => {
     const primaryContacts = allContacts.filter(contact => contact.linkedId === null);
     let oldContact, newContact;
 
@@ -114,23 +121,14 @@ export const updateSecondaryContact = async (email: string | undefined, phoneNum
             linkedId: oldContact.id
         }
     });
+
+    const updatedContacts = await prisma.contact.findMany({
+        where: {
+            linkedId: oldContact.id,
+            linkPrecedence: "secondary"
+        }
+    });
+
+    return updatedContacts;
 }
 
-// return the result back to caller
-export const returnResult = (result: Contact[]) => {
-    return (req: Request, res: Response) => {
-        const primaryId = result.filter(contact => contact.linkedId === null);
-        const emailIds = new Set([result.map(contact => contact.email)]);
-        const phones = new Set([result.map(contact => contact.phoneNumber)]);
-        const secondaryIds = new Set([result.map(contact => contact.linkedId).filter(Boolean)]);
-
-        return res.status(200).json({
-            contact: {
-                primaryContactId: primaryId[0].id,
-                emails: Array.from(emailIds),
-                phoneNumbers: Array.from(phones),
-                secondaryContactIds: Array.from(secondaryIds)
-            }
-        });
-    }
-}

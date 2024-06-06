@@ -16,6 +16,7 @@ const helper_1 = require("../utils/helper");
 const handleIdentityReconciliation = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { email, phoneNumber } = validation_1.validationSchema.parse(req.body);
+        // const { email, phoneNumber } = req.body;
         // function to get all primary and secondary contacts from Database
         let result = yield (0, helper_1.getAllContacts)(email, phoneNumber);
         if (!result.length) {
@@ -43,14 +44,15 @@ const handleIdentityReconciliation = (req, res) => __awaiter(void 0, void 0, voi
         const primaryContacts = result.filter(contact => contact.linkedId === null);
         // Case 1: Where there is only one primary Contact for the given email and phoneNumber
         if (primaryContacts.length === 1) {
-            const contactExist = result.some(contact => contact.email === email && contact.phoneNumber === phoneNumber);
+            let contactExist = result.some(contact => contact.email === email && contact.phoneNumber === phoneNumber);
+            contactExist = email && phoneNumber ? contactExist : true;
             if (!contactExist) {
                 const secondaryContact = yield (0, helper_1.createSecondaryContact)(email, phoneNumber, primaryContacts[0]);
                 result.push(secondaryContact);
             }
             const emailIds = new Set(result.map(contact => contact.email));
             const phones = new Set(result.map(contact => contact.phoneNumber));
-            const secondaryIds = new Set(result.map(contact => contact.id !== primaryContacts[0].id).filter(Boolean));
+            const secondaryIds = new Set(result.filter(contact => contact.id !== primaryContacts[0].id).map(contact => contact.id));
             return res.status(200).json({
                 contact: {
                     primaryContactId: primaryContacts[0].id,
@@ -64,13 +66,14 @@ const handleIdentityReconciliation = (req, res) => __awaiter(void 0, void 0, voi
         if (primaryContacts.length === 2) {
             const contactExist = result.some(contact => contact.email === email && contact.phoneNumber === phoneNumber);
             if (!contactExist) {
-                yield (0, helper_1.updateSecondaryContact)(email, phoneNumber, result);
+                const updatedContacts = yield (0, helper_1.updateSecondaryContact)(email, phoneNumber, result);
                 result = yield (0, helper_1.getAllContacts)(email, phoneNumber);
+                result.push(...updatedContacts);
             }
             const primaryId = result.filter(contact => contact.linkedId === null);
             const emailIds = new Set(result.map(contact => contact.email));
             const phones = new Set(result.map(contact => contact.phoneNumber));
-            const secondaryIds = new Set(result.map(contact => contact.id !== primaryId[0].id).filter(Boolean));
+            const secondaryIds = new Set(result.filter(contact => contact.id !== primaryId[0].id).map(contact => contact.id));
             return res.status(200).json({
                 contact: {
                     primaryContactId: primaryId[0].id,

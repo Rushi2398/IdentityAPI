@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.returnResult = exports.updateSecondaryContact = exports.createSecondaryContact = exports.createPrimaryContact = exports.getAllContacts = void 0;
+exports.updateSecondaryContact = exports.createSecondaryContact = exports.createPrimaryContact = exports.getAllContacts = void 0;
 const client_1 = require("@prisma/client");
 const prisma = new client_1.PrismaClient();
 // get All Primary and Secondary Contacts for given email and phoneNumber
@@ -48,6 +48,12 @@ const getAllContacts = (email, phoneNumber) => __awaiter(void 0, void 0, void 0,
                     where: { id: contact.linkedId }
                 });
             }
+            const otherContacts = yield prisma.contact.findMany({
+                where: {
+                    linkedId: contact === null || contact === void 0 ? void 0 : contact.id
+                }
+            });
+            allContacts.push(...otherContacts);
         }
     }
     return allContacts;
@@ -106,23 +112,12 @@ const updateSecondaryContact = (email, phoneNumber, allContacts) => __awaiter(vo
             linkedId: oldContact.id
         }
     });
+    const updatedContacts = yield prisma.contact.findMany({
+        where: {
+            linkedId: oldContact.id,
+            linkPrecedence: "secondary"
+        }
+    });
+    return updatedContacts;
 });
 exports.updateSecondaryContact = updateSecondaryContact;
-// return the result back to caller
-const returnResult = (result) => {
-    return (req, res) => {
-        const primaryId = result.filter(contact => contact.linkedId === null);
-        const emailIds = new Set([result.map(contact => contact.email)]);
-        const phones = new Set([result.map(contact => contact.phoneNumber)]);
-        const secondaryIds = new Set([result.map(contact => contact.linkedId).filter(Boolean)]);
-        return res.status(200).json({
-            contact: {
-                primaryContactId: primaryId[0].id,
-                emails: Array.from(emailIds),
-                phoneNumbers: Array.from(phones),
-                secondaryContactIds: Array.from(secondaryIds)
-            }
-        });
-    };
-};
-exports.returnResult = returnResult;
