@@ -10,6 +10,7 @@ const app = (0, express_1.default)();
 (0, dotenv_1.config)();
 const PORT = process.env.PORT || 8000;
 app.use(express_1.default.json());
+// Route Handler
 app.use('/api', contact_1.handleIdentityReconciliation);
 app.listen(PORT, () => {
     console.log(`Server Started at ${PORT}`);

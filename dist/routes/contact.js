@@ -7,4 +7,5 @@ exports.contactRouter = void 0;
 const express_1 = __importDefault(require("express"));
 const contact_1 = require("../controllers/contact");
 exports.contactRouter = express_1.default.Router();
+// Controller for Identity Endpoint
 exports.contactRouter.post('/identity', contact_1.handleIdentityReconciliation);

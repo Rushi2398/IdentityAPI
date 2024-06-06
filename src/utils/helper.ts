@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { Request, Response } from "express";
 
 const prisma = new PrismaClient();
 
@@ -13,6 +14,7 @@ type Contact = {
     deletedAt: Date | null;
 };
 
+// get All Primary and Secondary Contacts for given email and phoneNumber
 export const getAllContacts = async (email: string | undefined, phoneNumber: string | undefined) => {
     const initialContacts = await prisma.contact.findMany({
         where: {
@@ -23,6 +25,7 @@ export const getAllContacts = async (email: string | undefined, phoneNumber: str
         }
     });
 
+    // return empty array if no entry found in the database.
     if (!initialContacts) return [];
 
     const allContacts: Contact[] = [];
@@ -33,6 +36,7 @@ export const getAllContacts = async (email: string | undefined, phoneNumber: str
         if (contact.linkedId) uniqueLinkIds.add(contact.linkedId);
     });
 
+    // for all the initialContacts, find all the secondary and primary contacts
     for (const linkedId of uniqueLinkIds) {
         let contact = await prisma.contact.findUnique({
             where: {
@@ -55,6 +59,7 @@ export const getAllContacts = async (email: string | undefined, phoneNumber: str
     return allContacts;
 }
 
+// Create a new contact when there is no existing combination present with email and phone Number
 export const createPrimaryContact = async (email: string, phoneNumber: string) => {
     const newContact = await prisma.contact.create({
         data: {
@@ -67,6 +72,7 @@ export const createPrimaryContact = async (email: string, phoneNumber: string) =
     return newContact;
 }
 
+// Create a secondary contact since the email or phoneNumber is already present with a primary contact
 export const createSecondaryContact = async (email: string | undefined, phoneNumber: string | undefined, primaryContact: Contact) => {
     const newSecondaryContact = await prisma.contact.create({
         data: {
@@ -84,6 +90,7 @@ export const createSecondaryContact = async (email: string | undefined, phoneNum
     return newSecondaryContact;
 }
 
+// Update all the contacts whose primary Id is converted to Secondary Id
 export const updateSecondaryContact = async (email: string | undefined, phoneNumber: string | undefined, allContacts: Contact[]) => {
     const primaryContacts = allContacts.filter(contact => contact.linkedId === null);
     let oldContact, newContact;
@@ -108,5 +115,21 @@ export const updateSecondaryContact = async (email: string | undefined, phoneNum
             linkedId: oldContact.id
         }
     });
+}
 
+// return the result back to caller
+export const returnResult = (result: Contact[]) => (req: Request, res: Response) => {
+    const primaryId = result.filter(contact => contact.linkedId === null);
+    const emailIds = new Set([result.map(contact => contact.email)]);
+    const phones = new Set([result.map(contact => contact.phoneNumber)]);
+    const secondaryIds = new Set([result.map(contact => contact.linkedId).filter(Boolean)]);
+
+    return res.status(200).json({
+        contact: {
+            primaryContactId: primaryId[0].id,
+            emails: Array.from(emailIds),
+            phoneNumbers: Array.from(phones),
+            secondaryContactIds: Array.from(secondaryIds)
+        }
+    });
 }

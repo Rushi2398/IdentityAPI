@@ -9,9 +9,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateSecondaryContact = exports.createSecondaryContact = exports.createPrimaryContact = exports.getAllContacts = void 0;
+exports.returnResult = exports.updateSecondaryContact = exports.createSecondaryContact = exports.createPrimaryContact = exports.getAllContacts = void 0;
 const client_1 = require("@prisma/client");
 const prisma = new client_1.PrismaClient();
+// get All Primary and Secondary Contacts for given email and phoneNumber
 const getAllContacts = (email, phoneNumber) => __awaiter(void 0, void 0, void 0, function* () {
     const initialContacts = yield prisma.contact.findMany({
         where: {
@@ -21,6 +22,7 @@ const getAllContacts = (email, phoneNumber) => __awaiter(void 0, void 0, void 0,
             ]
         }
     });
+    // return empty array if no entry found in the database.
     if (!initialContacts)
         return [];
     const allContacts = [];
@@ -30,6 +32,7 @@ const getAllContacts = (email, phoneNumber) => __awaiter(void 0, void 0, void 0,
         if (contact.linkedId)
             uniqueLinkIds.add(contact.linkedId);
     });
+    // for all the initialContacts, find all the secondary and primary contacts
     for (const linkedId of uniqueLinkIds) {
         let contact = yield prisma.contact.findUnique({
             where: {
@@ -50,6 +53,7 @@ const getAllContacts = (email, phoneNumber) => __awaiter(void 0, void 0, void 0,
     return allContacts;
 });
 exports.getAllContacts = getAllContacts;
+// Create a new contact when there is no existing combination present with email and phone Number
 const createPrimaryContact = (email, phoneNumber) => __awaiter(void 0, void 0, void 0, function* () {
     const newContact = yield prisma.contact.create({
         data: {
@@ -61,6 +65,7 @@ const createPrimaryContact = (email, phoneNumber) => __awaiter(void 0, void 0, v
     return newContact;
 });
 exports.createPrimaryContact = createPrimaryContact;
+// Create a secondary contact since the email or phoneNumber is already present with a primary contact
 const createSecondaryContact = (email, phoneNumber, primaryContact) => __awaiter(void 0, void 0, void 0, function* () {
     const newSecondaryContact = yield prisma.contact.create({
         data: {
@@ -77,6 +82,7 @@ const createSecondaryContact = (email, phoneNumber, primaryContact) => __awaiter
     return newSecondaryContact;
 });
 exports.createSecondaryContact = createSecondaryContact;
+// Update all the contacts whose primary Id is converted to Secondary Id
 const updateSecondaryContact = (email, phoneNumber, allContacts) => __awaiter(void 0, void 0, void 0, function* () {
     const primaryContacts = allContacts.filter(contact => contact.linkedId === null);
     let oldContact, newContact;
@@ -102,3 +108,19 @@ const updateSecondaryContact = (email, phoneNumber, allContacts) => __awaiter(vo
     });
 });
 exports.updateSecondaryContact = updateSecondaryContact;
+// return the result back to caller
+const returnResult = (result) => (req, res) => {
+    const primaryId = result.filter(contact => contact.linkedId === null);
+    const emailIds = new Set([result.map(contact => contact.email)]);
+    const phones = new Set([result.map(contact => contact.phoneNumber)]);
+    const secondaryIds = new Set([result.map(contact => contact.linkedId).filter(Boolean)]);
+    return res.status(200).json({
+        contact: {
+            primaryContactId: primaryId[0].id,
+            emails: Array.from(emailIds),
+            phoneNumbers: Array.from(phones),
+            secondaryContactIds: Array.from(secondaryIds)
+        }
+    });
+};
+exports.returnResult = returnResult;
