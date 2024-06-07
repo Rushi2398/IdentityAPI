@@ -62,6 +62,7 @@ To test the endpoint, run the following link in postman:
 
 [Identity API](https://identity-recon-api.vercel.app/api/identity)
 
+Pass these parameters in Body
 `email` 
 `phoneNumber`
 
