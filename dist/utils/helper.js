@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateSecondaryContact = exports.createSecondaryContact = exports.createPrimaryContact = exports.getAllContacts = void 0;
+exports.returnResult = exports.updateSecondaryContact = exports.createSecondaryContact = exports.createPrimaryContact = exports.getAllContacts = void 0;
 const client_1 = require("@prisma/client");
 const prisma = new client_1.PrismaClient();
 // get All Primary and Secondary Contacts for given email and phoneNumber
@@ -48,13 +48,13 @@ const getAllContacts = (email, phoneNumber) => __awaiter(void 0, void 0, void 0,
                     where: { id: contact.linkedId }
                 });
             }
-            const otherContacts = yield prisma.contact.findMany({
-                where: {
-                    linkedId: contact === null || contact === void 0 ? void 0 : contact.id
-                }
-            });
-            allContacts.push(...otherContacts);
         }
+        const otherContacts = yield prisma.contact.findMany({
+            where: {
+                linkedId: contact === null || contact === void 0 ? void 0 : contact.id
+            }
+        });
+        allContacts.push(...otherContacts);
     }
     return allContacts;
 });
@@ -121,3 +121,42 @@ const updateSecondaryContact = (email, phoneNumber, allContacts) => __awaiter(vo
     return updatedContacts;
 });
 exports.updateSecondaryContact = updateSecondaryContact;
+const returnResult = (email, phoneNumber, result, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const primaryContacts = result.filter(contact => contact.linkedId === null);
+    let primaryId = getUniqueContacts(primaryContacts);
+    let contactExist = result.some(contact => contact.email === email && contact.phoneNumber === phoneNumber);
+    contactExist = email && phoneNumber ? contactExist : true;
+    // Case 1: Where there is only one primary Contact for the given email and phoneNumber
+    if (!contactExist && primaryId.length === 1) {
+        const secondaryContact = yield (0, exports.createSecondaryContact)(email, phoneNumber, primaryId[0]);
+        result.push(secondaryContact);
+    }
+    // Case 2: Where there are 2 primary Contacts for the given email and phoneNumber.
+    if (!contactExist && primaryId.length === 2) {
+        const updatedContacts = yield (0, exports.updateSecondaryContact)(email, phoneNumber, result);
+        result = yield (0, exports.getAllContacts)(email, phoneNumber);
+        result.push(...updatedContacts);
+    }
+    primaryId = result.filter(contact => contact.linkedId === null);
+    const emailIds = new Set(result.map(contact => contact.email));
+    const phones = new Set(result.map(contact => contact.phoneNumber));
+    const secondaryIds = new Set(result.filter(contact => contact.id !== primaryId[0].id).map(contact => contact.id));
+    return res.status(200).json({
+        contact: {
+            primaryContactId: primaryId[0].id,
+            emails: Array.from(emailIds),
+            phoneNumbers: Array.from(phones),
+            secondaryContactIds: Array.from(secondaryIds)
+        }
+    });
+});
+exports.returnResult = returnResult;
+const getUniqueContacts = (contacts) => {
+    const uniqueContactsMap = new Map();
+    contacts.forEach(contact => {
+        if (!uniqueContactsMap.has(contact.id)) {
+            uniqueContactsMap.set(contact.id, contact);
+        }
+    });
+    return Array.from(uniqueContactsMap.values());
+};
