@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.returnResult = exports.updateSecondaryContact = exports.createSecondaryContact = exports.createPrimaryContact = exports.getAllContacts = void 0;
+exports.returnResult = exports.createPrimaryContact = exports.getAllContacts = void 0;
 const client_1 = require("@prisma/client");
 const prisma = new client_1.PrismaClient();
 // get All Primary and Secondary Contacts for given email and phoneNumber
@@ -49,6 +49,8 @@ const getAllContacts = (email, phoneNumber) => __awaiter(void 0, void 0, void 0,
                 });
             }
         }
+    }
+    for (const contact of initialContacts) {
         const otherContacts = yield prisma.contact.findMany({
             where: {
                 linkedId: contact === null || contact === void 0 ? void 0 : contact.id
@@ -87,7 +89,6 @@ const createSecondaryContact = (email, phoneNumber, primaryContact) => __awaiter
     });
     return newSecondaryContact;
 });
-exports.createSecondaryContact = createSecondaryContact;
 // Update all the contacts whose primary Id is converted to Secondary Id
 const updateSecondaryContact = (email, phoneNumber, allContacts) => __awaiter(void 0, void 0, void 0, function* () {
     const primaryContacts = allContacts.filter(contact => contact.linkedId === null);
@@ -120,7 +121,6 @@ const updateSecondaryContact = (email, phoneNumber, allContacts) => __awaiter(vo
     });
     return updatedContacts;
 });
-exports.updateSecondaryContact = updateSecondaryContact;
 const returnResult = (email, phoneNumber, result, res) => __awaiter(void 0, void 0, void 0, function* () {
     const primaryContacts = result.filter(contact => contact.linkedId === null);
     let primaryId = getUniqueContacts(primaryContacts);
@@ -128,15 +128,16 @@ const returnResult = (email, phoneNumber, result, res) => __awaiter(void 0, void
     contactExist = email && phoneNumber ? contactExist : true;
     // Case 1: Where there is only one primary Contact for the given email and phoneNumber
     if (!contactExist && primaryId.length === 1) {
-        const secondaryContact = yield (0, exports.createSecondaryContact)(email, phoneNumber, primaryId[0]);
+        const secondaryContact = yield createSecondaryContact(email, phoneNumber, primaryId[0]);
         result.push(secondaryContact);
     }
     // Case 2: Where there are 2 primary Contacts for the given email and phoneNumber.
     if (!contactExist && primaryId.length === 2) {
-        const updatedContacts = yield (0, exports.updateSecondaryContact)(email, phoneNumber, result);
+        const updatedContacts = yield updateSecondaryContact(email, phoneNumber, result);
         result = yield (0, exports.getAllContacts)(email, phoneNumber);
         result.push(...updatedContacts);
     }
+    // return the required result in JSON format 
     primaryId = result.filter(contact => contact.linkedId === null);
     const emailIds = new Set(result.map(contact => contact.email));
     const phones = new Set(result.map(contact => contact.phoneNumber));
@@ -151,6 +152,7 @@ const returnResult = (email, phoneNumber, result, res) => __awaiter(void 0, void
     });
 });
 exports.returnResult = returnResult;
+//get Unique Contacts (objects) from the PrimaryContacts: Remove repeated contacts
 const getUniqueContacts = (contacts) => {
     const uniqueContactsMap = new Map();
     contacts.forEach(contact => {
